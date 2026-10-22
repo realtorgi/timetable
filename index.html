@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ko" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>학원 시간표 관리 시스템 (Interactive Academy Timetable)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+
+  <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center">
+          <i class="fa-solid fa-calendar-days text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-slate-900 dark:text-white leading-tight">학원 맞춤 시간표 (Academy Timetable)</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">수업 일정 조회 및 실시간 편집 시스템</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Edit Mode Toggle -->
+        <button id="toggleEditModeBtn" type="button" class="px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/80 border border-indigo-200 dark:border-indigo-800 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer">
+          <i id="editModeIcon" class="fa-solid fa-pen-to-square"></i>
+          <span id="editModeText">편집 모드 켜기</span>
+        </button>
+
+        <!-- Add Class Button -->
+        <button id="addClassBtn" type="button" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-200 dark:shadow-none transition-all cursor-pointer">
+          <i class="fa-solid fa-plus"></i>
+          <span>수업 추가</span>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button id="themeToggleBtn" type="button" class="p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer" title="다크 모드 / 라이트 모드 전환">
+          <i id="themeIcon" class="fa-solid fa-moon"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Controls & Filter Section -->
+    <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-wrap items-center justify-between gap-4">
+      
+      <!-- Target Filter Tags -->
+      <div class="flex items-center gap-2 flex-wrap text-xs">
+        <span class="font-bold text-slate-500 dark:text-slate-400 mr-1"><i class="fa-solid fa-filter"></i> 필터:</span>
+        <button class="filter-btn active px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-indigo-600 text-white font-bold transition-all" data-filter="all">전체보기</button>
+        <button class="filter-btn px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" data-filter="초">초등부</button>
+        <button class="filter-btn px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" data-filter="중">중등부</button>
+        <button class="filter-btn px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" data-filter="고">고등부</button>
+        <button class="filter-btn px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" data-filter="성인">성인반</button>
+      </div>
+
+      <!-- Quick Action Options -->
+      <div class="flex items-center gap-2 text-xs">
+        <button id="resetTimetableBtn" type="button" class="px-3 py-1.5 text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 font-semibold flex items-center gap-1 transition-colors">
+          <i class="fa-solid fa-rotate-left"></i> 초기화
+        </button>
+        <button id="exportDataBtn" type="button" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg font-semibold flex items-center gap-1 transition-colors">
+          <i class="fa-solid fa-download"></i> 내보내기
+        </button>
+      </div>
+    </div>
+
+    <!-- Timetable Grid Container -->
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+      
+      <!-- Notification Bar -->
+      <div id="statusNotice" class="bg-indigo-50 dark:bg-indigo-950/40 px-4 py-2 text-xs text-indigo-700 dark:text-indigo-300 border-b border-indigo-100 dark:border-indigo-900/40 flex items-center justify-between">
+        <span class="flex items-center gap-2">
+          <i class="fa-solid fa-circle-info"></i>
+          <span id="noticeText">수업 카드를 클릭하면 상세 정보를 확인하거나 수정 모드에서 시간표를 변경할 수 있습니다.</span>
+        </span>
+        <span class="font-bold text-[11px] opacity-80" id="classTotalBadge">총 18개 수업 등록됨</span>
+      </div>
+
+      <!-- Scrollable Timetable Grid Table -->
+      <div class="overflow-x-auto custom-scrollbar">
+        <table class="w-full text-center border-collapse min-w-[700px]">
+          <thead>
+            <tr class="bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-bold text-xs border-b border-slate-200 dark:border-slate-700">
+              <th class="py-3 px-2 w-20 border-r border-slate-200 dark:border-slate-700">시간</th>
+              <th class="py-3 px-2 border-r border-slate-200 dark:border-slate-700">월요일</th>
+              <th class="py-3 px-2 border-r border-slate-200 dark:border-slate-700">화요일</th>
+              <th class="py-3 px-2 border-r border-slate-200 dark:border-slate-700">수요일</th>
+              <th class="py-3 px-2 border-r border-slate-200 dark:border-slate-700">목요일</th>
+              <th class="py-3 px-2 border-r border-slate-200 dark:border-slate-700">금요일</th>
+              <th class="py-3 px-2 border-r border-slate-200 dark:border-slate-700 bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-300">토요일</th>
+              <th class="py-3 px-2 bg-rose-50/50 dark:bg-rose-950/20 text-rose-900 dark:text-rose-300">일요일</th>
+            </tr>
+          </thead>
+          <tbody id="timetableBody" class="divide-y divide-slate-100 dark:divide-slate-800 text-xs font-medium">
+            <!-- Dynamic Grid Generated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Class Edit/Add Modal Container -->
+  <div id="classModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4">
+      <div class="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
+        <h3 id="modalTitle" class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <i class="fa-solid fa-pen-to-square text-indigo-600"></i> 수업 정보 설정
+        </h3>
+        <button id="closeModalBtn" type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="classForm" class="space-y-3">
+        <input type="hidden" id="classId">
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">수업/반 이름 *</label>
+          <input type="text" id="className" required placeholder="예: 중2-2, 고1-1, 성인독해" class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">요일 선택 *</label>
+            <select id="classDay" required class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              <option value="월">월요일</option>
+              <option value="화">화요일</option>
+              <option value="수">수요일</option>
+              <option value="목">목요일</option>
+              <option value="금">금요일</option>
+              <option value="토">토요일</option>
+              <option value="일">일요일</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">색상 태그</label>
+            <select id="classColor" class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              <option value="amber">주황 / 갈색 계열 (중2-2, 중3 등)</option>
+              <option value="yellow">노란색 계열 (초6, 중2-1 등)</option>
+              <option value="green">연두 / 초록 계열 (중1, 고1-1)</option>
+              <option value="blue">파란색 계열 (초5, 고3-1)</option>
+              <option value="purple">보라 / 회색 계열 (고3-2 등)</option>
+              <option value="rose">장미 / 핑크 계열 (고2 등)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">시작 시간 *</label>
+            <input type="time" id="startTime" required value="16:30" class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">종료 시간 *</label>
+            <input type="time" id="endTime" required value="17:30" class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">비고 / 강의실 / 교재 메모</label>
+          <input type="text" id="classNote" placeholder="예: 2관 301호 / 독해 구문 특강" class="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+
+        <div class="pt-3 flex items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-800">
+          <button id="deleteClassBtn" type="button" class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors">
+            <i class="fa-solid fa-trash-can"></i> 삭제
+          </button>
+          <div class="flex items-center gap-2">
+            <button id="cancelModalBtn" type="button" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs transition-colors">
+              취소
+            </button>
+            <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md shadow-indigo-200 dark:shadow-none transition-all">
+              저장하기
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // --- Initial Timetable Data Extracted Exact from User Image ---
+    const defaultClasses = [
+      // 수요일
+      { id: '1', name: '성인독해', day: '수', start: '12:50', end: '13:50', color: 'amber', note: '성인 독해반' },
+      { id: '2', name: '중1', day: '수', start: '15:30', end: '16:30', color: 'green', note: '중등 기초' },
+      { id: '3', name: '중2-2', day: '수', start: '16:30', end: '17:30', color: 'amber', note: '' },
+      { id: '4', name: '고1-1', day: '수', start: '18:30', end: '19:30', color: 'green', note: '' },
+      { id: '5', name: '고2', day: '수', start: '19:30', end: '20:30', color: 'rose', note: '' },
+      { id: '6', name: '고3-1', day: '수', start: '20:30', end: '21:30', color: 'blue', note: '' },
+      { id: '7', name: '고1-3', day: '수', start: '22:00', end: '23:00', color: 'yellow', note: '' },
+
+      // 목요일
+      { id: '8', name: '중3/중1', day: '목', start: '16:40', end: '17:40', color: 'amber', note: '혼합 연계반' },
+      { id: '9', name: '중2-1', day: '목', start: '17:40', end: '18:40', color: 'yellow', note: '' },
+      { id: '10', name: '초5', day: '목', start: '18:40', end: '19:40', color: 'blue', note: '' },
+      { id: '11', name: '초6', day: '목', start: '19:30', end: '20:30', color: 'yellow', note: '' },
+      { id: '12', name: '고1-2', day: '목', start: '20:10', end: '21:10', color: 'blue', note: '' },
+      { id: '13', name: '고3-2', day: '목', start: '21:10', end: '22:10', color: 'purple', note: '' },
+
+      // 금요일
+      { id: '14', name: '성인독해', day: '금', start: '12:50', end: '13:50', color: 'amber', note: '성인 독해반' },
+      { id: '15', name: '중2-2', day: '금', start: '16:30', end: '17:30', color: 'amber', note: '' },
+      { id: '16', name: '고1-1', day: '금', start: '18:30', end: '19:30', color: 'green', note: '' },
+      { id: '17', name: '고2', day: '금', start: '19:30', end: '20:30', color: 'rose', note: '' },
+      { id: '18', name: '고3-1', day: '금', start: '20:30', end: '21:30', color: 'blue', note: '' },
+      { id: '19', name: '고1-3', day: '금', start: '22:00', end: '23:00', color: 'yellow', note: '' },
+
+      // 화요일
+      { id: '20', name: '중3', day: '화', start: '16:40', end: '17:40', color: 'amber', note: '' },
+      { id: '21', name: '중2-1', day: '화', start: '17:40', end: '18:40', color: 'yellow', note: '' },
+      { id: '22', name: '초6', day: '화', start: '19:00', end: '20:00', color: 'yellow', note: '' },
+      { id: '23', name: '고1-2', day: '화', start: '20:10', end: '21:10', color: 'blue', note: '' },
+      { id: '24', name: '고3-2', day: '화', start: '21:10', end: '22:10', color: 'purple', note: '' },
+
+      // 토요일
+      { id: '25', name: '초6', day: '토', start: '11:00', end: '12:00', color: 'yellow', note: '' },
+      { id: '26', name: '초5', day: '토', start: '12:10', end: '13:10', color: 'blue', note: '' },
+      { id: '27', name: '중3', day: '토', start: '16:30', end: '17:30', color: 'amber', note: '' },
+      { id: '28', name: '고2', day: '토', start: '17:30', end: '18:30', color: 'rose', note: '' },
+      { id: '29', name: '중2-1/중1', day: '토', start: '18:30', end: '19:30', color: 'yellow', note: '' },
+
+      // 일요일
+      { id: '30', name: '고1-1', day: '일', start: '10:00', end: '11:00', color: 'green', note: '' },
+      { id: '31', name: '중2-2', day: '일', start: '11:00', end: '12:00', color: 'amber', note: '' },
+      { id: '32', name: '고1-2/3', day: '일', start: '12:00', end: '14:00', color: 'blue', note: '주말 몰입반' }
+    ];
+
+    // Time Slot Mapping (Matches rows from image)
+    const timeSlots = [
+      '08:45', '09:30', '10:00', '11:00', '12:00', '12:10', '12:50', '13:10',
+      '14:00', '15:10', '15:30', '15:40', '16:00', '16:30', '16:40', '17:30',
+      '17:40', '18:30', '18:40', '19:00', '19:30', '20:10', '20:30', '21:10',
+      '22:00', '22:30', '23:30'
+    ];
+
+    const days = ['월', '화', '수', '목', '금', '토', '일'];
+
+    // State Variables
+    let currentClasses = [];
+    let isEditMode = false;
+    let activeFilter = 'all';
+
+    // Load Saved Classes from LocalStorage or Use Defaults
+    function loadClasses() {
+      const saved = localStorage.getItem('academy_timetable_classes');
+      if (saved) {
+        try {
+          currentClasses = JSON.parse(saved);
+        } catch(e) {
+          currentClasses = [...defaultClasses];
+        }
+      } else {
+        currentClasses = [...defaultClasses];
+      }
+    }
+
+    function saveClasses() {
+      localStorage.setItem('academy_timetable_classes', JSON.stringify(currentClasses));
+      renderTimetable();
+    }
+
+    // Color Styles Mapping
+    const colorClasses = {
+      amber: 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-800 hover:bg-amber-200',
+      yellow: 'bg-yellow-100 dark:bg-yellow-950/80 text-yellow-900 dark:text-yellow-200 border-yellow-300 dark:border-yellow-800 hover:bg-yellow-200',
+      green: 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-200',
+      blue: 'bg-sky-100 dark:bg-sky-950/80 text-sky-900 dark:text-sky-200 border-sky-300 dark:border-sky-800 hover:bg-sky-200',
+      purple: 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-400 dark:border-slate-600 hover:bg-slate-300',
+      rose: 'bg-rose-100 dark:bg-rose-950/80 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-800 hover:bg-rose-200'
+    };
+
+    // Render Timetable Grid Function
+    function renderTimetable() {
+      const tbody = document.getElementById('timetableBody');
+      tbody.innerHTML = '';
+
+      document.getElementById('classTotalBadge').textContent = `총 ${currentClasses.length}개 수업 등록됨`;
+
+      timeSlots.forEach(slot => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors h-10';
+
+        // Time Slot Header Column
+        const timeTd = document.createElement('td');
+        timeTd.className = 'py-2 px-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50';
+        timeTd.textContent = slot;
+        tr.appendChild(timeTd);
+
+        // Days Columns (월 ~ 일)
+        days.forEach(day => {
+          const td = document.createElement('td');
+          td.className = `p-1 border-r border-slate-100 dark:border-slate-800 align-top relative ${day === '토' ? 'bg-amber-50/20 dark:bg-amber-950/10' : day === '일' ? 'bg-rose-50/20 dark:bg-rose-950/10' : ''}`;
+
+          // Find classes that match this day and start time
+          const matches = currentClasses.filter(c => {
+            if (c.day !== day) return false;
+            
+            // Filter checking
+            if (activeFilter !== 'all' && !c.name.includes(activeFilter)) return false;
+
+            return c.start === slot;
+          });
+
+          if (matches.length > 0) {
+            matches.forEach(item => {
+              const card = document.createElement('div');
+              const colorStyle = colorClasses[item.color] || colorClasses.amber;
+
+              card.className = `p-1.5 rounded-lg border text-xs font-bold transition-all shadow-sm cursor-pointer mb-1 ${colorStyle} ${isEditMode ? 'ring-2 ring-indigo-400 ring-offset-1 dark:ring-offset-slate-900 animate-pulse' : ''}`;
+              
+              card.innerHTML = `
+                <div class="flex items-center justify-between">
+                  <span class="truncate">${item.name}</span>
+                  ${isEditMode ? '<i class="fa-solid fa-pen text-[10px]"></i>' : ''}
+                </div>
+                <div class="text-[10px] opacity-80 font-normal mt-0.5">${item.start}~${item.end}</div>
+              `;
+
+              card.addEventListener('click', () => {
+                openModal(item);
+              });
+
+              td.appendChild(card);
+            });
+          } else if (isEditMode) {
+            // Empty cell click in edit mode to quickly add class at this time/day
+            td.classList.add('hover:bg-indigo-50/50', 'dark:hover:bg-indigo-950/30', 'cursor-pointer');
+            td.addEventListener('click', (e) => {
+              if (e.target === td) {
+                openModal({ day: day, start: slot, end: getNextSlotTime(slot), color: 'amber' });
+              }
+            });
+          }
+
+          tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function getNextSlotTime(slot) {
+      const idx = timeSlots.indexOf(slot);
+      if (idx !== -1 && idx < timeSlots.length - 1) {
+        return timeSlots[idx + 1];
+      }
+      return '18:00';
+    }
+
+    // Modal Control Functions
+    const modal = document.getElementById('classModal');
+    const classForm = document.getElementById('classForm');
+
+    function openModal(item = null) {
+      document.getElementById('classId').value = item && item.id ? item.id : '';
+      document.getElementById('className').value = item && item.name ? item.name : '';
+      document.getElementById('classDay').value = item && item.day ? item.day : '월';
+      document.getElementById('classColor').value = item && item.color ? item.color : 'amber';
+      document.getElementById('startTime').value = item && item.start ? item.start : '16:30';
+      document.getElementById('endTime').value = item && item.end ? item.end : '17:30';
+      document.getElementById('classNote').value = item && item.note ? item.note : '';
+
+      const deleteBtn = document.getElementById('deleteClassBtn');
+      if (item && item.id) {
+        deleteBtn.classList.remove('hidden');
+        document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-indigo-600"></i> 수업 정보 수정';
+      } else {
+        deleteBtn.classList.add('hidden');
+        document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-plus-circle text-indigo-600"></i> 새 수업 추가';
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      modal.classList.add('hidden');
+    }
+
+    // Modal Form Submission (Add / Update)
+    classForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const id = document.getElementById('classId').value;
+      const name = document.getElementById('className').value.trim();
+      const day = document.getElementById('classDay').value;
+      const color = document.getElementById('classColor').value;
+      const start = document.getElementById('startTime').value;
+      const end = document.getElementById('endTime').value;
+      const note = document.getElementById('classNote').value.trim();
+
+      if (!name) {
+        alert('수업 이름을 입력해 주세요.');
+        return;
+      }
+
+      if (id) {
+        // Update
+        const idx = currentClasses.findIndex(c => c.id === id);
+        if (idx !== -1) {
+          currentClasses[idx] = { id, name, day, color, start, end, note };
+        }
+      } else {
+        // Create new
+        const newId = 'c_' + Date.now();
+        currentClasses.push({ id: newId, name, day, color, start, end, note });
+      }
+
+      saveClasses();
+      closeModal();
+    });
+
+    // Delete Class
+    document.getElementById('deleteClassBtn').addEventListener('click', () => {
+      const id = document.getElementById('classId').value;
+      if (id && confirm('이 수업을 시간표에서 삭제하시겠습니까?')) {
+        currentClasses = currentClasses.filter(c => c.id !== id);
+        saveClasses();
+        closeModal();
+      }
+    });
+
+    // Toggle Edit Mode
+    const toggleEditModeBtn = document.getElementById('toggleEditModeBtn');
+    const editModeText = document.getElementById('editModeText');
+    const editModeIcon = document.getElementById('editModeIcon');
+    const noticeText = document.getElementById('noticeText');
+
+    toggleEditModeBtn.addEventListener('click', () => {
+      isEditMode = !isEditMode;
+      if (isEditMode) {
+        editModeText.textContent = '편집 완료';
+        editModeIcon.className = 'fa-solid fa-check';
+        toggleEditModeBtn.className = 'px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer';
+        noticeText.textContent = '편집 모드가 활성화되었습니다. 수정할 수업 카드를 클릭하거나 빈 칸을 클릭하여 새 수업을 추가하세요.';
+      } else {
+        editModeText.textContent = '편집 모드 켜기';
+        editModeIcon.className = 'fa-solid fa-pen-to-square';
+        toggleEditModeBtn.className = 'px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/80 border border-indigo-200 dark:border-indigo-800 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer';
+        noticeText.textContent = '수업 카드를 클릭하면 상세 정보를 확인하거나 수정 모드에서 시간표를 변경할 수 있습니다.';
+      }
+      renderTimetable();
+    });
+
+    // Filter Controls
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => {
+          b.classList.remove('active', 'bg-indigo-600', 'text-white');
+          b.classList.add('bg-slate-100', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-300');
+        });
+
+        btn.classList.add('active', 'bg-indigo-600', 'text-white');
+        btn.classList.remove('bg-slate-100', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-300');
+
+        activeFilter = btn.getAttribute('data-filter');
+        renderTimetable();
+      });
+    });
+
+    // Modal Close Events
+    document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+    document.getElementById('cancelModalBtn').addEventListener('click', closeModal);
+    document.getElementById('addClassBtn').addEventListener('click', () => openModal());
+
+    // Reset to Default Timetable
+    document.getElementById('resetTimetableBtn').addEventListener('click', () => {
+      if (confirm('시간표를 초기 원본 이미지 상태로 복원하시겠습니까? (수정 내역이 초기화됩니다)')) {
+        currentClasses = [...defaultClasses];
+        saveClasses();
+      }
+    });
+
+    // Export Data as JSON File
+    document.getElementById('exportDataBtn').addEventListener('click', () => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentClasses, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "학원_시간표_데이터.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    });
+
+    // Theme Toggle & System Preference Handler
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const themeIcon = document.getElementById('themeIcon');
+
+    function applyTheme(isDark) {
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+        themeIcon.className = 'fa-solid fa-sun text-amber-400';
+      } else {
+        document.documentElement.classList.remove('dark');
+        themeIcon.className = 'fa-solid fa-moon text-slate-600';
+      }
+    }
+
+    function initTheme() {
+      const savedTheme = localStorage.getItem('academy_timetable_theme');
+      if (savedTheme) {
+        applyTheme(savedTheme === 'dark');
+      } else {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        applyTheme(prefersDark);
+      }
+    }
+
+    themeToggleBtn.addEventListener('click', () => {
+      const isDarkNow = document.documentElement.classList.contains('dark');
+      const nextThemeIsDark = !isDarkNow;
+      applyTheme(nextThemeIsDark);
+      localStorage.setItem('academy_timetable_theme', nextThemeIsDark ? 'dark' : 'light');
+    });
+
+    // Initial Loading
+    window.onload = function() {
+      initTheme();
+      loadClasses();
+      renderTimetable();
+    };
+  </script>
+</body>
+</html>
