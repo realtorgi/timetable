@@ -652,7 +652,17 @@
 
     // Initialize Firebase Authentication & Realtime Listener
     async function initFirebaseSync() {
+      // First render local default classes as fallback immediately
+      currentClasses = [...defaultClasses];
+      renderTimetable();
+
       try {
+        // Check if valid Firebase config exists
+        if (!firebaseConfig || !firebaseConfig.projectId || firebaseConfig.projectId === "dummy") {
+          document.getElementById('syncStatus').innerHTML = '<i class="fa-solid fa-hard-drive text-amber-400"></i> 오프라인/로컬 저장';
+          return;
+        }
+
         // Authenticate first
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
           const userCredential = await signInWithCustomToken(auth, __initial_auth_token);
@@ -672,16 +682,19 @@
             docsData.push(docSnap.data());
           });
 
-          currentClasses = docsData;
+          if (docsData.length > 0) {
+            currentClasses = docsData;
+          }
           renderTimetable();
+          document.getElementById('syncStatus').innerHTML = '<i class="fa-solid fa-wifi"></i> 실시간 연동됨';
         }, (error) => {
-          console.error("Firestore snapshot error:", error);
-          document.getElementById('syncStatus').innerHTML = '<i class="fa-solid fa-circle-exclamation text-rose-500"></i> 동기화 오류';
+          console.warn("Firestore snapshot warning:", error);
+          document.getElementById('syncStatus').innerHTML = '<i class="fa-solid fa-hard-drive text-amber-400"></i> 오프라인 모드';
         });
 
       } catch (error) {
-        console.error("Firebase auth error:", error);
-        document.getElementById('syncStatus').innerHTML = '<i class="fa-solid fa-circle-exclamation text-rose-500"></i> 연결 실패';
+        console.warn("Firebase auth/sync warning:", error);
+        document.getElementById('syncStatus').innerHTML = '<i class="fa-solid fa-hard-drive text-amber-400"></i> 오프라인 모드';
       }
     }
 
