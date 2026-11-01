@@ -58,7 +58,12 @@
         </div>
         <div>
           <h1 class="text-lg font-bold text-slate-900 dark:text-white leading-tight">학원 맞춤 시간표 (Academy Timetable)</h1>
-          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">수업 일정 조회 및 실시간 편집 시스템</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2">
+            <span>수업 일정 조회 및 실시간 편집 시스템</span>
+            <span id="syncStatus" class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+              <i class="fa-solid fa-wifi"></i> 실시간 연동됨
+            </span>
+          </p>
         </div>
       </div>
 
@@ -118,7 +123,7 @@
           <i class="fa-solid fa-circle-info"></i>
           <span id="noticeText">수업 카드를 클릭하면 상세 정보를 확인하거나 수정 모드에서 시간표를 변경할 수 있습니다.</span>
         </span>
-        <span class="font-bold text-[11px] opacity-80" id="classTotalBadge">총 18개 수업 등록됨</span>
+        <span class="font-bold text-[11px] opacity-80" id="classTotalBadge">불러오는 중...</span>
       </div>
 
       <!-- Scrollable Timetable Grid Table -->
@@ -224,8 +229,40 @@
     </div>
   </div>
 
-  <script>
-    // --- Initial Timetable Data Extracted Exact from User Image ---
+  <!-- Custom Alert Modal (Replaces browser alert) -->
+  <div id="customAlertModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-5 space-y-4 text-center">
+      <div id="customAlertIcon" class="text-3xl text-indigo-600">
+        <i class="fa-solid fa-circle-info"></i>
+      </div>
+      <p id="customAlertMessage" class="text-sm font-semibold text-slate-800 dark:text-slate-200"></p>
+      <div id="customAlertButtons" class="flex justify-center gap-2 pt-2">
+        <button id="customAlertOkBtn" type="button" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-all">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase Integration -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Firebase Configuration
+    const firebaseConfig = typeof __firebase_config !== 'undefined' 
+      ? JSON.parse(__firebase_config) 
+      : { apiKey: "dummy", authDomain: "dummy", projectId: "dummy" };
+
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'academy-timetable-app';
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Document collection path for shared public timetable
+    const classesCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'classes');
+
+    // Default classes matching current image timetable exactly (32 classes)
     const defaultClasses = [
       // 수요일
       { id: '1', name: '성인독해', day: '수', start: '12:50', end: '13:50', color: 'amber', note: '성인 독해반' },
@@ -255,13 +292,13 @@
       // 화요일
       { id: '20', name: '중3', day: '화', start: '16:40', end: '17:40', color: 'amber', note: '' },
       { id: '21', name: '중2-1', day: '화', start: '17:40', end: '18:40', color: 'yellow', note: '' },
-      { id: '22', name: '초6', day: '화', start: '19:00', end: '20:00', color: 'yellow', note: '' },
+      { id: '22', name: '초6', day: '화', start: '19:00', end: '19:50', color: 'yellow', note: '' },
       { id: '23', name: '고1-2', day: '화', start: '20:10', end: '21:10', color: 'blue', note: '' },
       { id: '24', name: '고3-2', day: '화', start: '21:10', end: '22:10', color: 'purple', note: '' },
 
       // 토요일
-      { id: '25', name: '초6', day: '토', start: '11:00', end: '12:00', color: 'yellow', note: '' },
-      { id: '26', name: '초5', day: '토', start: '12:10', end: '13:10', color: 'blue', note: '' },
+      { id: '25', name: '초6', day: '토', start: '11:00', end: '11:55', color: 'amber', note: '' },
+      { id: '26', name: '초5', day: '토', start: '12:10', end: '13:45', color: 'blue', note: '' },
       { id: '27', name: '중3', day: '토', start: '16:30', end: '17:30', color: 'amber', note: '' },
       { id: '28', name: '고2', day: '토', start: '17:30', end: '18:30', color: 'rose', note: '' },
       { id: '29', name: '중2-1/중1', day: '토', start: '18:30', end: '19:30', color: 'yellow', note: '' },
@@ -269,10 +306,9 @@
       // 일요일
       { id: '30', name: '고1-1', day: '일', start: '10:00', end: '11:00', color: 'green', note: '' },
       { id: '31', name: '중2-2', day: '일', start: '11:00', end: '12:00', color: 'amber', note: '' },
-      { id: '32', name: '고1-2/3', day: '일', start: '12:00', end: '14:00', color: 'blue', note: '주말 몰입반' }
+      { id: '32', name: '고1-2/3', day: '일', start: '12:00', end: '13:00', color: 'blue', note: '주말 몰입반' }
     ];
 
-    // Time Slot Mapping (Matches rows from image)
     const timeSlots = [
       '08:45', '09:30', '10:00', '11:00', '12:00', '12:10', '12:50', '13:10',
       '14:00', '15:10', '15:30', '15:40', '16:00', '16:30', '16:40', '17:30',
@@ -282,41 +318,62 @@
 
     const days = ['월', '화', '수', '목', '금', '토', '일'];
 
-    // State Variables
+    // State
     let currentClasses = [];
     let isEditMode = false;
     let activeFilter = 'all';
+    let currentUser = null;
 
-    // Load Saved Classes from LocalStorage or Use Defaults
-    function loadClasses() {
-      const saved = localStorage.getItem('academy_timetable_classes');
-      if (saved) {
-        try {
-          currentClasses = JSON.parse(saved);
-        } catch(e) {
-          currentClasses = [...defaultClasses];
-        }
+    // Custom UI Alert/Confirm Helper
+    function showCustomAlert(message, isConfirm = false, onConfirm = null) {
+      const modal = document.getElementById('customAlertModal');
+      const msgElem = document.getElementById('customAlertMessage');
+      const btnContainer = document.getElementById('customAlertButtons');
+
+      msgElem.textContent = message;
+      btnContainer.innerHTML = '';
+
+      if (isConfirm) {
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs transition-all';
+        cancelBtn.textContent = '취소';
+        cancelBtn.onclick = () => modal.classList.add('hidden');
+
+        const okBtn = document.createElement('button');
+        okBtn.type = 'button';
+        okBtn.className = 'px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs transition-all';
+        okBtn.textContent = '확인';
+        okBtn.onclick = () => {
+          modal.classList.add('hidden');
+          if (onConfirm) onConfirm();
+        };
+
+        btnContainer.appendChild(cancelBtn);
+        btnContainer.appendChild(okBtn);
       } else {
-        currentClasses = [...defaultClasses];
+        const okBtn = document.createElement('button');
+        okBtn.type = 'button';
+        okBtn.className = 'px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-all';
+        okBtn.textContent = '확인';
+        okBtn.onclick = () => modal.classList.add('hidden');
+        btnContainer.appendChild(okBtn);
       }
-    }
 
-    function saveClasses() {
-      localStorage.setItem('academy_timetable_classes', JSON.stringify(currentClasses));
-      renderTimetable();
+      modal.classList.remove('hidden');
     }
 
     // Color Styles Mapping
     const colorClasses = {
-      amber: 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-800 hover:bg-amber-200',
-      yellow: 'bg-yellow-100 dark:bg-yellow-950/80 text-yellow-900 dark:text-yellow-200 border-yellow-300 dark:border-yellow-800 hover:bg-yellow-200',
-      green: 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-200',
-      blue: 'bg-sky-100 dark:bg-sky-950/80 text-sky-900 dark:text-sky-200 border-sky-300 dark:border-sky-800 hover:bg-sky-200',
-      purple: 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-400 dark:border-slate-600 hover:bg-slate-300',
-      rose: 'bg-rose-100 dark:bg-rose-950/80 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-800 hover:bg-rose-200'
+      amber: 'bg-amber-900/90 dark:bg-amber-950 text-amber-200 border-amber-700 hover:bg-amber-800',
+      yellow: 'bg-amber-800/80 dark:bg-amber-900 text-amber-100 border-amber-600 hover:bg-amber-700',
+      green: 'bg-emerald-950 dark:bg-emerald-950 text-emerald-200 border-emerald-800 hover:bg-emerald-900',
+      blue: 'bg-cyan-950 dark:bg-cyan-950 text-cyan-200 border-cyan-800 hover:bg-cyan-900',
+      purple: 'bg-slate-800 dark:bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-700',
+      rose: 'bg-rose-950 dark:bg-rose-950 text-rose-200 border-rose-800 hover:bg-rose-900'
     };
 
-    // Render Timetable Grid Function
+    // Render Timetable Grid
     function renderTimetable() {
       const tbody = document.getElementById('timetableBody');
       tbody.innerHTML = '';
@@ -327,24 +384,18 @@
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors h-10';
 
-        // Time Slot Header Column
         const timeTd = document.createElement('td');
         timeTd.className = 'py-2 px-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50';
         timeTd.textContent = slot;
         tr.appendChild(timeTd);
 
-        // Days Columns (월 ~ 일)
         days.forEach(day => {
           const td = document.createElement('td');
           td.className = `p-1 border-r border-slate-100 dark:border-slate-800 align-top relative ${day === '토' ? 'bg-amber-50/20 dark:bg-amber-950/10' : day === '일' ? 'bg-rose-50/20 dark:bg-rose-950/10' : ''}`;
 
-          // Find classes that match this day and start time
           const matches = currentClasses.filter(c => {
             if (c.day !== day) return false;
-            
-            // Filter checking
             if (activeFilter !== 'all' && !c.name.includes(activeFilter)) return false;
-
             return c.start === slot;
           });
 
@@ -370,7 +421,6 @@
               td.appendChild(card);
             });
           } else if (isEditMode) {
-            // Empty cell click in edit mode to quickly add class at this time/day
             td.classList.add('hover:bg-indigo-50/50', 'dark:hover:bg-indigo-950/30', 'cursor-pointer');
             td.addEventListener('click', (e) => {
               if (e.target === td) {
@@ -394,7 +444,7 @@
       return '18:00';
     }
 
-    // Modal Control Functions
+    // Modal Operations
     const modal = document.getElementById('classModal');
     const classForm = document.getElementById('classForm');
 
@@ -423,11 +473,15 @@
       modal.classList.add('hidden');
     }
 
-    // Modal Form Submission (Add / Update)
-    classForm.addEventListener('submit', (e) => {
+    // Save/Update class to Firestore
+    classForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (!currentUser) {
+        showCustomAlert('데이터베이스 연결 인증이 완료되지 않았습니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
 
-      const id = document.getElementById('classId').value;
+      const id = document.getElementById('classId').value || 'c_' + Date.now();
       const name = document.getElementById('className').value.trim();
       const day = document.getElementById('classDay').value;
       const color = document.getElementById('classColor').value;
@@ -436,34 +490,62 @@
       const note = document.getElementById('classNote').value.trim();
 
       if (!name) {
-        alert('수업 이름을 입력해 주세요.');
+        showCustomAlert('수업 이름을 입력해 주세요.');
         return;
       }
 
-      if (id) {
-        // Update
-        const idx = currentClasses.findIndex(c => c.id === id);
-        if (idx !== -1) {
-          currentClasses[idx] = { id, name, day, color, start, end, note };
-        }
-      } else {
-        // Create new
-        const newId = 'c_' + Date.now();
-        currentClasses.push({ id: newId, name, day, color, start, end, note });
-      }
+      const classData = { id, name, day, color, start, end, note, updatedAt: Date.now() };
 
-      saveClasses();
-      closeModal();
+      try {
+        await setDoc(doc(classesCollectionRef, id), classData);
+        closeModal();
+      } catch (err) {
+        console.error('Save error:', err);
+        showCustomAlert('저장에 실패했습니다. 네트워크 상태를 확인해주세요.');
+      }
     });
 
-    // Delete Class
+    // Delete class from Firestore
     document.getElementById('deleteClassBtn').addEventListener('click', () => {
       const id = document.getElementById('classId').value;
-      if (id && confirm('이 수업을 시간표에서 삭제하시겠습니까?')) {
-        currentClasses = currentClasses.filter(c => c.id !== id);
-        saveClasses();
-        closeModal();
-      }
+      if (!id || !currentUser) return;
+
+      showCustomAlert('이 수업을 시간표에서 삭제하시겠습니까?', true, async () => {
+        try {
+          await deleteDoc(doc(classesCollectionRef, id));
+          closeModal();
+        } catch (err) {
+          console.error('Delete error:', err);
+          showCustomAlert('삭제 처리 중 오류가 발생했습니다.');
+        }
+      });
+    });
+
+    // Reset to Default Classes in Firestore
+    document.getElementById('resetTimetableBtn').addEventListener('click', () => {
+      if (!currentUser) return;
+
+      showCustomAlert('시간표를 초기 원본 상태로 복원하시겠습니까? (서버의 기존 데이터가 초기화됩니다)', true, async () => {
+        try {
+          const snapshot = await getDocs(classesCollectionRef);
+          const batch = writeBatch(db);
+          
+          snapshot.docs.forEach(docSnap => {
+            batch.delete(docSnap.ref);
+          });
+
+          defaultClasses.forEach(item => {
+            const ref = doc(classesCollectionRef, item.id);
+            batch.set(ref, { ...item, updatedAt: Date.now() });
+          });
+
+          await batch.commit();
+          showCustomAlert('원본 시간표 데이터로 초기화되었습니다.');
+        } catch (err) {
+          console.error('Reset error:', err);
+          showCustomAlert('초기화 실행 중 오류가 발생했습니다.');
+        }
+      });
     });
 
     // Toggle Edit Mode
@@ -504,18 +586,10 @@
       });
     });
 
-    // Modal Close Events
+    // Modal Event Bindings
     document.getElementById('closeModalBtn').addEventListener('click', closeModal);
     document.getElementById('cancelModalBtn').addEventListener('click', closeModal);
     document.getElementById('addClassBtn').addEventListener('click', () => openModal());
-
-    // Reset to Default Timetable
-    document.getElementById('resetTimetableBtn').addEventListener('click', () => {
-      if (confirm('시간표를 초기 원본 이미지 상태로 복원하시겠습니까? (수정 내역이 초기화됩니다)')) {
-        currentClasses = [...defaultClasses];
-        saveClasses();
-      }
-    });
 
     // Export Data as JSON File
     document.getElementById('exportDataBtn').addEventListener('click', () => {
@@ -528,7 +602,7 @@
       downloadAnchor.remove();
     });
 
-    // Theme Toggle & System Preference Handler
+    // Theme Toggle Handler
     const themeToggleBtn = document.getElementById('themeToggleBtn');
     const themeIcon = document.getElementById('themeIcon');
 
@@ -559,11 +633,62 @@
       localStorage.setItem('academy_timetable_theme', nextThemeIsDark ? 'dark' : 'light');
     });
 
-    // Initial Loading
+    // Populate initial default data into Firestore if collection is empty
+    async function seedInitialDataIfEmpty() {
+      try {
+        const snapshot = await getDocs(classesCollectionRef);
+        if (snapshot.empty) {
+          const batch = writeBatch(db);
+          defaultClasses.forEach(item => {
+            const ref = doc(classesCollectionRef, item.id);
+            batch.set(ref, { ...item, updatedAt: Date.now() });
+          });
+          await batch.commit();
+        }
+      } catch (err) {
+        console.error('Seeding error:', err);
+      }
+    }
+
+    // Initialize Firebase Authentication & Realtime Listener
+    async function initFirebaseSync() {
+      try {
+        // Authenticate first
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          const userCredential = await signInWithCustomToken(auth, __initial_auth_token);
+          currentUser = userCredential.user;
+        } else {
+          const userCredential = await signInAnonymously(auth);
+          currentUser = userCredential.user;
+        }
+
+        // Seed initial 32 default items if Firestore is completely empty
+        await seedInitialDataIfEmpty();
+
+        // Subscribe to Realtime Firestore updates
+        onSnapshot(classesCollectionRef, (snapshot) => {
+          const docsData = [];
+          snapshot.forEach(docSnap => {
+            docsData.push(docSnap.data());
+          });
+
+          currentClasses = docsData;
+          renderTimetable();
+        }, (error) => {
+          console.error("Firestore snapshot error:", error);
+          document.getElementById('syncStatus').innerHTML = '<i class="fa-solid fa-circle-exclamation text-rose-500"></i> 동기화 오류';
+        });
+
+      } catch (error) {
+        console.error("Firebase auth error:", error);
+        document.getElementById('syncStatus').innerHTML = '<i class="fa-solid fa-circle-exclamation text-rose-500"></i> 연결 실패';
+      }
+    }
+
+    // Startup Execution
     window.onload = function() {
       initTheme();
-      loadClasses();
-      renderTimetable();
+      initFirebaseSync();
     };
   </script>
 </body>
