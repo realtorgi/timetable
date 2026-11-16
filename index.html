@@ -60,8 +60,9 @@
           <h1 class="text-lg font-bold text-slate-900 dark:text-white leading-tight">학원 맞춤 시간표 (Academy Timetable)</h1>
           <p class="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2">
             <span>수업 일정 조회 및 실시간 편집 시스템</span>
-            <span id="syncStatus" class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-              <i class="fa-solid fa-wifi"></i> 실시간 연동됨
+            <!-- 항시 표시되는 DB 연동 상태 배지 -->
+            <span id="syncStatus" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 transition-all">
+              <i class="fa-solid fa-spinner fa-spin"></i> DB 연결 확인 중...
             </span>
           </p>
         </div>
@@ -229,7 +230,7 @@
     </div>
   </div>
 
-  <!-- Custom Alert Modal (Replaces browser alert) -->
+  <!-- Custom Alert Modal -->
   <div id="customAlertModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-5 space-y-4 text-center">
       <div id="customAlertIcon" class="text-3xl text-indigo-600">
@@ -249,22 +250,24 @@
     import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // Firebase Configuration
-    const firebaseConfig = typeof __firebase_config !== 'undefined' 
-      ? JSON.parse(__firebase_config) 
-      : { apiKey: "dummy", authDomain: "dummy", projectId: "dummy" };
+    const firebaseConfig = {
+      apiKey: "AIzaSyCLLlZm22Z2UPPBhbuT7qd-dmoDJ9Tklas",
+      authDomain: "sea-timetable.firebaseapp.com",
+      projectId: "sea-timetable",
+      storageBucket: "sea-timetable.firebasestorage.app",
+      messagingSenderId: "303251364908",
+      appId: "1:303251364908:web:c9e9d7389c9cc759748589"
+    };
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'academy-timetable-app';
+    const appId = 'seattle-english-timetable';
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Document collection path for shared public timetable
     const classesCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'classes');
 
-    // Default classes matching current image timetable exactly (32 classes)
     const defaultClasses = [
-      // 수요일
       { id: '1', name: '성인독해', day: '수', start: '12:50', end: '13:50', color: 'amber', note: '성인 독해반' },
       { id: '2', name: '중1', day: '수', start: '15:30', end: '16:30', color: 'green', note: '중등 기초' },
       { id: '3', name: '중2-2', day: '수', start: '16:30', end: '17:30', color: 'amber', note: '' },
@@ -273,7 +276,6 @@
       { id: '6', name: '고3-1', day: '수', start: '20:30', end: '21:30', color: 'blue', note: '' },
       { id: '7', name: '고1-3', day: '수', start: '22:00', end: '23:00', color: 'yellow', note: '' },
 
-      // 목요일
       { id: '8', name: '중3/중1', day: '목', start: '16:40', end: '17:40', color: 'amber', note: '혼합 연계반' },
       { id: '9', name: '중2-1', day: '목', start: '17:40', end: '18:40', color: 'yellow', note: '' },
       { id: '10', name: '초5', day: '목', start: '18:40', end: '19:40', color: 'blue', note: '' },
@@ -281,7 +283,6 @@
       { id: '12', name: '고1-2', day: '목', start: '20:10', end: '21:10', color: 'blue', note: '' },
       { id: '13', name: '고3-2', day: '목', start: '21:10', end: '22:10', color: 'purple', note: '' },
 
-      // 금요일
       { id: '14', name: '성인독해', day: '금', start: '12:50', end: '13:50', color: 'amber', note: '성인 독해반' },
       { id: '15', name: '중2-2', day: '금', start: '16:30', end: '17:30', color: 'amber', note: '' },
       { id: '16', name: '고1-1', day: '금', start: '18:30', end: '19:30', color: 'green', note: '' },
@@ -289,21 +290,18 @@
       { id: '18', name: '고3-1', day: '금', start: '20:30', end: '21:30', color: 'blue', note: '' },
       { id: '19', name: '고1-3', day: '금', start: '22:00', end: '23:00', color: 'yellow', note: '' },
 
-      // 화요일
       { id: '20', name: '중3', day: '화', start: '16:40', end: '17:40', color: 'amber', note: '' },
       { id: '21', name: '중2-1', day: '화', start: '17:40', end: '18:40', color: 'yellow', note: '' },
       { id: '22', name: '초6', day: '화', start: '19:00', end: '19:50', color: 'yellow', note: '' },
       { id: '23', name: '고1-2', day: '화', start: '20:10', end: '21:10', color: 'blue', note: '' },
       { id: '24', name: '고3-2', day: '화', start: '21:10', end: '22:10', color: 'purple', note: '' },
 
-      // 토요일
       { id: '25', name: '초6', day: '토', start: '11:00', end: '11:55', color: 'amber', note: '' },
       { id: '26', name: '초5', day: '토', start: '12:10', end: '13:45', color: 'blue', note: '' },
       { id: '27', name: '중3', day: '토', start: '16:30', end: '17:30', color: 'amber', note: '' },
       { id: '28', name: '고2', day: '토', start: '17:30', end: '18:30', color: 'rose', note: '' },
       { id: '29', name: '중2-1/중1', day: '토', start: '18:30', end: '19:30', color: 'yellow', note: '' },
 
-      // 일요일
       { id: '30', name: '고1-1', day: '일', start: '10:00', end: '11:00', color: 'green', note: '' },
       { id: '31', name: '중2-2', day: '일', start: '11:00', end: '12:00', color: 'amber', note: '' },
       { id: '32', name: '고1-2/3', day: '일', start: '12:00', end: '13:00', color: 'blue', note: '주말 몰입반' }
@@ -318,13 +316,27 @@
 
     const days = ['월', '화', '수', '목', '금', '토', '일'];
 
-    // State
     let currentClasses = [];
     let isEditMode = false;
     let activeFilter = 'all';
     let currentUser = null;
 
-    // Custom UI Alert/Confirm Helper
+    // 상태 바 업데이트 헬퍼 함수
+    function updateSyncBadge(status, text) {
+      const badge = document.getElementById('syncStatus');
+      if (!badge) return;
+      if (status === 'connected') {
+        badge.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-all";
+        badge.innerHTML = `<i class="fa-solid fa-wifi text-emerald-600 dark:text-emerald-400"></i> ${text}`;
+      } else if (status === 'saving') {
+        badge.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-all";
+        badge.innerHTML = `<i class="fa-solid fa-cloud-arrow-up fa-bounce text-indigo-600 dark:text-indigo-400"></i> ${text}`;
+      } else {
+        badge.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 transition-all";
+        badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400"></i> ${text}`;
+      }
+    }
+
     function showCustomAlert(message, isConfirm = false, onConfirm = null) {
       const modal = document.getElementById('customAlertModal');
       const msgElem = document.getElementById('customAlertMessage');
@@ -363,7 +375,6 @@
       modal.classList.remove('hidden');
     }
 
-    // Color Styles Mapping
     const colorClasses = {
       amber: 'bg-amber-900/90 dark:bg-amber-950 text-amber-200 border-amber-700 hover:bg-amber-800',
       yellow: 'bg-amber-800/80 dark:bg-amber-900 text-amber-100 border-amber-600 hover:bg-amber-700',
@@ -373,7 +384,6 @@
       rose: 'bg-rose-950 dark:bg-rose-950 text-rose-200 border-rose-800 hover:bg-rose-900'
     };
 
-    // Render Timetable Grid
     function renderTimetable() {
       const tbody = document.getElementById('timetableBody');
       tbody.innerHTML = '';
@@ -444,7 +454,6 @@
       return '18:00';
     }
 
-    // Modal Operations
     const modal = document.getElementById('classModal');
     const classForm = document.getElementById('classForm');
 
@@ -473,7 +482,6 @@
       modal.classList.add('hidden');
     }
 
-    // Save/Update class to Firestore
     classForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!currentUser) {
@@ -497,36 +505,41 @@
       const classData = { id, name, day, color, start, end, note, updatedAt: Date.now() };
 
       try {
+        updateSyncBadge('saving', '서버에 저장 중...');
         await setDoc(doc(classesCollectionRef, id), classData);
+        updateSyncBadge('connected', '실시간 연동됨 (저장 완료)');
         closeModal();
       } catch (err) {
         console.error('Save error:', err);
+        updateSyncBadge('error', '저장 오류 발생');
         showCustomAlert('저장에 실패했습니다. 네트워크 상태를 확인해주세요.');
       }
     });
 
-    // Delete class from Firestore
     document.getElementById('deleteClassBtn').addEventListener('click', () => {
       const id = document.getElementById('classId').value;
       if (!id || !currentUser) return;
 
       showCustomAlert('이 수업을 시간표에서 삭제하시겠습니까?', true, async () => {
         try {
+          updateSyncBadge('saving', '삭제 반영 중...');
           await deleteDoc(doc(classesCollectionRef, id));
+          updateSyncBadge('connected', '실시간 연동됨 (삭제 완료)');
           closeModal();
         } catch (err) {
           console.error('Delete error:', err);
+          updateSyncBadge('error', '삭제 오류 발생');
           showCustomAlert('삭제 처리 중 오류가 발생했습니다.');
         }
       });
     });
 
-    // Reset to Default Classes in Firestore
     document.getElementById('resetTimetableBtn').addEventListener('click', () => {
       if (!currentUser) return;
 
       showCustomAlert('시간표를 초기 원본 상태로 복원하시겠습니까? (서버의 기존 데이터가 초기화됩니다)', true, async () => {
         try {
+          updateSyncBadge('saving', '초기화 반영 중...');
           const snapshot = await getDocs(classesCollectionRef);
           const batch = writeBatch(db);
           
@@ -540,15 +553,16 @@
           });
 
           await batch.commit();
+          updateSyncBadge('connected', '실시간 연동됨 (초기화 완료)');
           showCustomAlert('원본 시간표 데이터로 초기화되었습니다.');
         } catch (err) {
           console.error('Reset error:', err);
+          updateSyncBadge('error', '초기화 오류');
           showCustomAlert('초기화 실행 중 오류가 발생했습니다.');
         }
       });
     });
 
-    // Toggle Edit Mode
     const toggleEditModeBtn = document.getElementById('toggleEditModeBtn');
     const editModeText = document.getElementById('editModeText');
     const editModeIcon = document.getElementById('editModeIcon');
@@ -570,7 +584,6 @@
       renderTimetable();
     });
 
-    // Filter Controls
     document.querySelectorAll('.filter-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.filter-btn').forEach(b => {
@@ -586,12 +599,10 @@
       });
     });
 
-    // Modal Event Bindings
     document.getElementById('closeModalBtn').addEventListener('click', closeModal);
     document.getElementById('cancelModalBtn').addEventListener('click', closeModal);
     document.getElementById('addClassBtn').addEventListener('click', () => openModal());
 
-    // Export Data as JSON File
     document.getElementById('exportDataBtn').addEventListener('click', () => {
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentClasses, null, 2));
       const downloadAnchor = document.createElement('a');
@@ -602,7 +613,6 @@
       downloadAnchor.remove();
     });
 
-    // Theme Toggle Handler
     const themeToggleBtn = document.getElementById('themeToggleBtn');
     const themeIcon = document.getElementById('themeIcon');
 
@@ -633,7 +643,6 @@
       localStorage.setItem('academy_timetable_theme', nextThemeIsDark ? 'dark' : 'light');
     });
 
-    // Populate initial default data into Firestore if collection is empty
     async function seedInitialDataIfEmpty() {
       try {
         const snapshot = await getDocs(classesCollectionRef);
@@ -650,20 +659,12 @@
       }
     }
 
-    // Initialize Firebase Authentication & Realtime Listener
     async function initFirebaseSync() {
-      // First render local default classes as fallback immediately
       currentClasses = [...defaultClasses];
       renderTimetable();
+      updateSyncBadge('saving', 'DB 인증 및 연결 중...');
 
       try {
-        // Check if valid Firebase config exists
-        if (!firebaseConfig || !firebaseConfig.projectId || firebaseConfig.projectId === "dummy") {
-          document.getElementById('syncStatus').innerHTML = '<i class="fa-solid fa-hard-drive text-amber-400"></i> 오프라인/로컬 저장';
-          return;
-        }
-
-        // Authenticate first
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
           const userCredential = await signInWithCustomToken(auth, __initial_auth_token);
           currentUser = userCredential.user;
@@ -672,10 +673,8 @@
           currentUser = userCredential.user;
         }
 
-        // Seed initial 32 default items if Firestore is completely empty
         await seedInitialDataIfEmpty();
 
-        // Subscribe to Realtime Firestore updates
         onSnapshot(classesCollectionRef, (snapshot) => {
           const docsData = [];
           snapshot.forEach(docSnap => {
@@ -686,19 +685,18 @@
             currentClasses = docsData;
           }
           renderTimetable();
-          document.getElementById('syncStatus').innerHTML = '<i class="fa-solid fa-wifi"></i> 실시간 연동됨';
+          updateSyncBadge('connected', '실시간 연동됨 (DB 연결 완료)');
         }, (error) => {
           console.warn("Firestore snapshot warning:", error);
-          document.getElementById('syncStatus').innerHTML = '<i class="fa-solid fa-hard-drive text-amber-400"></i> 오프라인 모드';
+          updateSyncBadge('error', '오프라인 모드 (연결 실패)');
         });
 
       } catch (error) {
         console.warn("Firebase auth/sync warning:", error);
-        document.getElementById('syncStatus').innerHTML = '<i class="fa-solid fa-hard-drive text-amber-400"></i> 오프라인 모드';
+        updateSyncBadge('error', '오프라인 모드 (인증 오류)');
       }
     }
 
-    // Startup Execution
     window.onload = function() {
       initTheme();
       initFirebaseSync();
